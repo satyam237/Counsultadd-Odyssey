@@ -124,6 +124,6 @@ For support, please open an issue in the GitHub repository or contact the mainta
 
 ## Acknowledgments
 
-- Built with LangChain and Google's Gemini model
+- Built with LangChain, LangGraph and Google's Gemini model
 - Uses ChromaDB for vector storage
 - Implements semantic search for accurate requirement matching
