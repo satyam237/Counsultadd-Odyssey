@@ -5,83 +5,23 @@ from docx import Document
 from sentence_transformers import SentenceTransformer
 import chromadb
 from rank_bm25 import BM25Okapi
-# If the Google Generative AI package supports an actual call, import and use it.
-# (This example assumes that the GenerativeModel can be initialized with an API key.)
+
 import google.generativeai as genai
-# Load environment variables and API key
 load_dotenv()
+
 api_key = os.getenv("GEMINI_API_KEY")
-# File paths and model names
-PDF_PATH = (
-    "/Users/satyamjadhav/Base/Codebases/Counsultadd-HK/data/pdf/ELIGIBLE RFP - 1.pdf"
-)
-DOCX_PATH = (
-    "/Users/satyamjadhav/Base/Codebases/Counsultadd-HK/data/docs/Company_Data.docx"
-)
+
+
+PDF_PATH = ("/Users/satyamjadhav/Base/Codebases/Counsultadd-HK/data/pdf/IN-ELIGIBLE_RFP.pdf")
+DOCX_PATH = ("/Users/satyamjadhav/Base/Codebases/Counsultadd-HK/data/docs/Company_Data.docx")
 EMBEDDING_MODEL_NAME = "all-MiniLM-L6-v2"
 VECTOR_DB_PATH = "./chroma_db"
-# Configure the API key once at the start of your program
+
+
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 LLM_MODEL_NAME = "gemini-2.0-flash"
 model = genai.GenerativeModel(model_name='gemini-2.0-flash')
-# Hardcoded company data and requirements for simulation
-COMPANY_DATA = """
-COMPANY DATA
-Field: Company Legal Name
-Data: FirstStaff Workforce Solutions, LLC
-Field: Principal Business Address
-Data: 3105 Maple Avenue, Suite 1200, Dallas, TX 75201
-Field: Phone Number
-Data: (214) 832-4455
-Field: Fax Number
-Data: (214) 832-4460
-Field: Email Address
-Data: proposals@firststaffsolutions.com
-Field: Authorized Representative
-Data: Meredith Chan, Director of Contracts
-Field: Authorized Representative Phone
-Data: (212) 555-0199
-Field: Signature
-Data: Meredith Chan (signed manually)
-Field: Company Length of Existence
-Data: 9 years
-Field: Years of Experience in Temporary Staffing
-Data: 7 years
-Field: DUNS Number
-Data: 07-842-1490
-Field: CAGE Code
-Data: 8J4T7
-Field: SAM.gov Registration Date
-Data: 03/01/2022
-Field: NAICS Codes
-Data: 561320 – Temporary Help Services; 541611 – Admin Management
-Field: State of Incorporation
-Data: Delaware
-Field: Bank Letter of Creditworthiness
-Data: Not Available.
-Field: State Registration Number
-Data: SRN-DE-0923847
-Field: Services Provided
-Data: Administrative, IT, Legal & Credentialing Staffing
-Field: Business Structure
-Data: Limited Liability Company (LLC)
-Field: W-9 Form
-Data: Attached (TIN: 47-6392011)
-Field: Certificate of Insurance
-Data: Travelers Insurance, Policy #TX-884529-A; includes Workers' Comp, Liability, and Auto
-Field: Licenses
-Data: Texas Employment Agency License #TXEA-34892
-Field: Historically Underutilized Business/DBE Status
-Data: Not certified.
-Field: Key Personnel – Project Manager
-Data: Ramesh Iyer
-Field: Key Personnel – Technical Lead
-Data: Sarah Collins
-Field: Key Personnel – Security Auditor
-Data: James Wu
-Field: NO MBE Certification
-Data: True
-"""
+
 INELIGIBLE_RFP_REQUIREMENTS = """
 *Eligibility Criteria Found (Scenario: Ineligible PDF):*
 * If eligible for Native American Preference, provide proof of enrollment/membership (such as a tribal enrollment card) in a federally recognized Tribe or proof of certification as an Indian-owned business (Native American Ownership must be 51% or more).
@@ -93,6 +33,7 @@ INELIGIBLE_RFP_REQUIREMENTS = """
 * The General Contractor and the Subcontractors shall be required to employ at least sixty percent (60%) unskilled positions with qualified Native Americans.
 * The General Contractor and all sub-contractors shall maintain the established 50% and 60% Native employment benchmarks throughout the duration of the project and, wherever possible, the General Contractor and sub-contractors shall endeavor to exceed these benchmarks.
 """
+
 ELIGIBLE_RFP_REQUIREMENTS = """
 *Eligibility Criteria Found (Scenario: Eligible PDF):*
 * The successful bidder must have a minimum of three (3) years of business in Temporary Staffing.
@@ -105,6 +46,7 @@ ELIGIBLE_RFP_REQUIREMENTS = """
 * Please submit proof of Historically Underutilized Business "HUB" state certificate. If not certified, but you intend to subcontract services, please Submit Attachment A. If you do not intend to subcontract services, write "None" on Attachment A and submit it.
 * Please submit proof of M/W/DBE certificate.
 """
+
 # --- Helper Functions ---
 def extract_text_from_pdf(pdf_path):
     """Extracts text from a PDF file using PyPDF2."""
@@ -117,16 +59,16 @@ def extract_text_from_pdf(pdf_path):
     except Exception as e:
         print(f"Error reading PDF: {e}")
     return text.strip() or "No text extracted from PDF."
+
+
 def extract_text_from_docx(docx_path):
     """Extracts text from a DOCX file using python-docx."""
-    try:
-        doc = Document(docx_path)
-        full_text = [para.text for para in doc.paragraphs if para.text.strip()]
-        return "\n".join(full_text)
-    except Exception as e:
-        print(f"Error reading DOCX: {e}")
-    # Fallback to hardcoded data if reading fails
-    return COMPANY_DATA
+
+    doc = Document(docx_path)
+    full_text = [para.text for para in doc.paragraphs if para.text.strip()]
+    return "\n".join(full_text)
+
+
 def chunk_text(text, method="structural", chunk_size=500, overlap=50):
     """Chunks text using different strategies."""
     print(f"Chunking text using '{method}' method...")
@@ -179,11 +121,9 @@ def chunk_text(text, method="structural", chunk_size=500, overlap=50):
     print(f"Split text into {len(chunks)} chunks.")
     tokenized_chunks = [chunk["text"].lower().split() for chunk in chunks]
     return chunks, tokenized_chunks
+
+
 def setup_vector_store(text_chunks_with_metadata, embedding_model_name):
-    """
-    Creates embeddings and indexes them in ChromaDB.
-    Also sets up a BM25 keyword index.
-    """
     print(f"Loading embedding model '{embedding_model_name}'...")
     embedding_model = SentenceTransformer(embedding_model_name)
     texts = [chunk["text"] for chunk in text_chunks_with_metadata]
@@ -195,7 +135,7 @@ def setup_vector_store(text_chunks_with_metadata, embedding_model_name):
     try:
         collection = client.get_collection(name=collection_name)
         print(f"Using existing collection '{collection_name}'.")
-    except Exception as e:
+    except Exception:
         print(f"Creating new collection '{collection_name}'.")
         collection = client.create_collection(name=collection_name)
     print("Adding documents, embeddings, and metadata to ChromaDB...")
@@ -212,12 +152,9 @@ def setup_vector_store(text_chunks_with_metadata, embedding_model_name):
     keyword_index = {"bm25": bm25_index, "tokenized_corpus": tokenized_corpus}
     print("Vector store and keyword index created.")
     return vector_store, keyword_index
+
+
 def retrieve_relevant_chunks(query, vector_store, keyword_index, embedding_model_name, top_k=5):
-    """
-    Retrieves relevant text chunks using a hybrid search:
-    semantic search via ChromaDB (if available) and keyword search via BM25.
-    Combines the results using Reciprocal Rank Fusion (RRF).
-    """
     print(f"Retrieving chunks relevant to query: '{query}'")
     all_chunks = vector_store["chunks_with_metadata"]
     # --- Semantic Search via ChromaDB ---
@@ -245,7 +182,6 @@ def retrieve_relevant_chunks(query, vector_store, keyword_index, embedding_model
         print("No collection available for semantic search.")
     # --- Keyword Search using BM25 ---
     bm25 = keyword_index.get("bm25")
-    tokenized_corpus = keyword_index.get("tokenized_corpus")
     query_tokens = query.lower().split()
     keyword_scores = bm25.get_scores(query_tokens)
     # Get indices of top scoring chunks
@@ -273,11 +209,9 @@ def retrieve_relevant_chunks(query, vector_store, keyword_index, embedding_model
         metadata_str = f"Source: {meta.get('source', 'N/A')}, Section: {meta.get('section', 'N/A')}, Chunk ID: {meta.get('chunk_id', 'N/A')}"
         context_str += f"--- Chunk Metadata: {metadata_str} ---\n{chunk['text']}\n---\n"
     return context_str
+
+
 def query_llm(prompt, model_name=LLM_MODEL_NAME):
-    """
-    Queries the LLM. If the API key is available and the model call works,
-    it will call the real model. Otherwise, it falls back to simulation.
-    """
     print(f"Querying LLM model '{model_name}' with prompt length {len(prompt)}...")
     try:
         # Use the generate_content function instead of instantiating a model class.
@@ -298,39 +232,40 @@ def query_llm(prompt, model_name=LLM_MODEL_NAME):
         and "formatting and submission" in prompt.lower()
     ):
         return """
-*Formatting and Submission Guidelines (Simulated Synthesis):*
-- Table of Contents required; follow RFP Section order.
-- Maximum 50 pages (excluding attachments); Times New Roman, 12pt, double-spaced.
-- Attach required documents (Form B, Certificate of Insurance, W-9, HUB/M/W/DBE if applicable).
-- Submission via State Procurement Portal by July 15, 2024, 5:00 PM CT.
-File naming convention: CompanyName_Proposal_YYYYMMDD.pdf
-"""
+    *Formatting and Submission Guidelines (Simulated Synthesis):*
+    - Table of Contents required; follow RFP Section order.
+    - Maximum 50 pages (excluding attachments); Times New Roman, 12pt, double-spaced.
+    - Attach required documents (Form B, Certificate of Insurance, W-9, HUB/M/W/DBE if applicable).
+    - Submission via State Procurement Portal by July 15, 2024, 5:00 PM CT.
+    File naming convention: CompanyName_Proposal_YYYYMMDD.pdf
+    """
     elif (
         "synthesize a comprehensive analysis of potential risks and unfavorable clauses" in prompt.lower()
         and "contractual terms" in prompt.lower()
     ):
         return """
-*Risk Analysis and Suggestions (Simulated Synthesis):*
-- Liability: Unlimited exposure; suggest negotiating a cap.
-- Termination: One-sided; recommend mutual termination rights.
-- Intellectual Property: All rights to the state; negotiate retention of pre-existing IP.
-- Payment Terms: Net 60; suggest reducing to Net 30 or adding late payment interest.
-- Confidentiality: Indefinite survival; propose a limited duration.
-"""
+    *Risk Analysis and Suggestions (Simulated Synthesis):*
+    - Liability: Unlimited exposure; suggest negotiating a cap.
+    - Termination: One-sided; recommend mutual termination rights.
+    - Intellectual Property: All rights to the state; negotiate retention of pre-existing IP.
+    - Payment Terms: Net 60; suggest reducing to Net 30 or adding late payment interest.
+    - Confidentiality: Indefinite survival; propose a limited duration.
+    """
     else:
         return "LLM Response (Simulated): Request processed."
+
+
 # --- Main Workflow ---
 if __name__ == "__main__":
-    # 1. Load Models
+
     print("Initializing embedding model and LLM client...")
     embedding_model = SentenceTransformer(EMBEDDING_MODEL_NAME)
-    # LLM client is initialized on-demand in query_llm
-    # 2. Parse Documents
+
     rfp_text_from_pdf = extract_text_from_pdf(PDF_PATH)
     company_text_from_doc = extract_text_from_docx(DOCX_PATH)
-    # Prefer the DOCX extraction if available; otherwise, fallback to COMPANY_DATA
-    company_text = company_text_from_doc or COMPANY_DATA
-    # 3. Process RFP Text for RAG
+    
+    company_text = company_text_from_doc
+
     rfp_text_placeholder = """
 REQUEST FOR PROPOSAL (RFP) - Temporary Staffing Services
 SECTION 1: INTRODUCTION
@@ -361,9 +296,9 @@ SECTION 5: CONTRACT TERMS AND CONDITIONS
     print("\n--- Setting up RAG ---")
     rfp_chunks, _ = chunk_text(rfp_text_placeholder, method="structural")
     vector_store, keyword_index = setup_vector_store(rfp_chunks, EMBEDDING_MODEL_NAME)
-    # 4. Perform Analysis Tasks
-    # Task 2: Comparison using Hardcoded Requirements and Company Data
+
     print("\n--- Task 2 (Scenario 1): Comparing 'Ineligible' Requirements ---")
+    
     prompt2_ineligible = f"""
 Analyze the following request carefully.
 Here are the eligibility requirements extracted from an RFP:
@@ -445,4 +380,3 @@ Risk Analysis and Suggestions (Synthesized):
     print("\nRisk Analysis Summary:")
     print(risk_analysis)
     print("\n--- RFP Analysis Complete ---")
-
