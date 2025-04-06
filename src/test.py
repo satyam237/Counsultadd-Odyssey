@@ -27,7 +27,6 @@ embeddings = HuggingFaceEmbeddings(
 data_dir = Path("/Users/satyamjadhav/Base/Codebases/Counsultadd-HK/data")
 vector_stores_dir = data_dir / "vector_stores"
 
-
 def load_vector_store(store_name: str) -> Chroma:
     """Load a vector store."""
     store_path = vector_stores_dir / store_name
